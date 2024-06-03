@@ -38,43 +38,63 @@ function clickMoveItem() {
         targetGroupItem.name = "movedItems";
     }
 
-    // Check if the number of numOfItem reaches 12
     numOfItem = targetGroupItem.groupItems.length;
     // alert(numOfItem);
 
-    if (numOfItem < 12) {
-        var aBound = new Array();
-        getPositions(batangDoc, aBound); // Avoid repetition by referring to an external file
-        if (aBound == null) return;
+    var tags = null;
 
+    try {
+        var compPathItem = batangDoc.compoundPathItems.getByName("setPosition");
+        tags = compPathItem.tags;
+    } catch (e) {
+        alert("Cannot find the specified object in the '바탕' Ai file.");
+        return;
+    }
+
+    try {
+        var geoBoundValue = tags.getByName("geoBound").value.split(",");
+        var isEqual = compPathItem.geometricBounds.length == geoBoundValue.length;
+        if (tags.length > 0) {
+            for (var l = 0; isEqual && l < 4; l++) {
+                isEqual = compPathItem.geometricBounds[l].toString() == geoBoundValue[l];
+            }
+            if (!isEqual)
+                rewriteToTags(compPathItem);
+        }
+    } catch (e) {
+        // alert("Cannot find the 'geoBound' Tag in the '바탕' Item.");
+        rewriteToTags(compPathItem);
+    }
+
+    // Check if the number of numOfItem reaches the number of the reference points
+    if (numOfItem < (tags.length - 1)) {
+        
         var height = selectionItem.geometricBounds[1] - selectionItem.geometricBounds[3];
 
         selectionItem.move(batangDoc.layers[0], ElementPlacement.INSIDE);
         selectionItem.move(targetGroupItem, ElementPlacement.INSIDE);
 
         // Move each object to the respective slot in the "바탕" Doc
-        selectionItem.position = [aBound[numOfItem][0], aBound[numOfItem][1] + height];
+        var tagValueArray = tags.getByName("P" + (numOfItem + 1)).value.split(",");
+        selectionItem.position = [parseFloat(tagValueArray[0]), parseFloat(tagValueArray[1]) + height];
 
-        numOfItem = targetGroupItem.groupItems.length;
+        // numOfItem = targetGroupItem.groupItems.length;
         // alert(numOfItem + " objects moved to the '바탕' layer");
     } else {
-        alert("All 12 objects have already been moved to the '바탕' layer")
+        alert("All objects have already been moved to the '바탕' layer")
     }
 }
 
 
-// Get the reference points (lower left corners) of each slot in the "바탕" Doc's layer
-function getPositions(doc, aBound) {
-    var pathItems = null;
+// Add the reference points (bottom left point) of each slot in the '바탕' Doc's layer as tags.
+function rewriteToTags(compPathItem) {
+    var pathItems = compPathItem.pathItems;
+    var tags = compPathItem.tags;
 
-    try {
-        var compPathItem = doc.compoundPathItems.getByName("setPosition");
-        pathItems = compPathItem.pathItems;
-    } catch (e) {
-        alert("Cannot find the specified object in the '바탕' Ai file");
-        aBound = null;
-    }
-
+    var geoBoundTag = tags.add();
+    geoBoundTag.name = "geoBound";
+    geoBoundTag.value = compPathItem.geometricBounds.toString();
+    
     var xPosition = new Array();
     var yPosition = new Array();
 
@@ -88,18 +108,11 @@ function getPositions(doc, aBound) {
     xPosition.sort(comparefn);
     yPosition.sort(comparefn);
 
-    var xBound = new Array();
-    var yBound = new Array();
-
-    for (var n = 0; n < xPosition.length; n += 2) {
-        xBound.push(xPosition[n]);
-    }
-    for (var o = yPosition.length - 2; o > -1; o -= 2) {
-        yBound.push(yPosition[o]);
-    }
-    for (var p = 0; p < yBound.length; p++) {
-        for (var q = 0; q < xBound.length; q++) {
-            aBound.push([xBound[q], yBound[p]]);
+    for (var p = yPosition.length - 2; p > -1; p -= 2) {
+        for (var q = 0; q < xPosition.length; q += 2) {
+            var newTag = tags.add();
+            newTag.name = "P" + (Math.floor((yPosition.length - 2 - p) * xPosition.length / 4) + Math.floor(q / 2) + 1);
+            newTag.value = [xPosition[q], yPosition[p]].toString();
         }
     }
 }
