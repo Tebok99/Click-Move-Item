@@ -20,7 +20,7 @@ function clickMoveItem() {
         return;
     } else if (selectionItem.length > 1) {
         var groupItem = doc.groupItems.add();
-        for (var a = 0; selectionItem.length; a++) {
+        for (var a = 0; a < selectionItem.length; a++) {
             selectionItem[a].move(groupItem, ElementPlacement.INSIDE);
         }
         doc.selection = null;
